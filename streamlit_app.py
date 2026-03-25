@@ -501,35 +501,35 @@ ctrl_cols = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
 
 with ctrl_cols[0]:
     st.markdown('<span class="control-label">📊 ' + t("normal_events") + '</span>', unsafe_allow_html=True)
-    n_normal = st.slider("", min_value=10, max_value=300, value=120, step=10, key="n_normal", label_visibility="collapsed")
+    n_normal = st.slider(t("normal_events"), min_value=10, max_value=300, value=120, step=10, key="n_normal", label_visibility="collapsed")
 
 with ctrl_cols[1]:
     st.markdown('<span class="control-label">⚠️ ' + t("suspicious_events") + '</span>', unsafe_allow_html=True)
-    n_suspicious = st.slider("", min_value=5, max_value=100, value=30, step=5, key="n_suspicious", label_visibility="collapsed")
+    n_suspicious = st.slider(t("suspicious_events"), min_value=5, max_value=100, value=30, step=5, key="n_suspicious", label_visibility="collapsed")
 
 with ctrl_cols[2]:
     st.markdown('<span class="control-label">🔴 ' + t("abuse_events") + '</span>', unsafe_allow_html=True)
-    n_abuse = st.slider("", min_value=5, max_value=100, value=20, step=5, key="n_abuse", label_visibility="collapsed")
+    n_abuse = st.slider(t("abuse_events"), min_value=5, max_value=100, value=20, step=5, key="n_abuse", label_visibility="collapsed")
 
 with ctrl_cols[3]:
     st.markdown('<span class="control-label">📱 OTP Window</span>', unsafe_allow_html=True)
-    window_phone = st.slider("", 5, 30, 10, key="window_phone", label_visibility="collapsed")
+    window_phone = st.slider("OTP Window", 5, 30, 10, key="window_phone", label_visibility="collapsed")
 
 with ctrl_cols[4]:
     st.markdown('<span class="control-label">🌐 IP Window</span>', unsafe_allow_html=True)
-    window_ip = st.slider("", 5, 30, 15, key="window_ip", label_visibility="collapsed")
+    window_ip = st.slider("IP Window", 5, 30, 15, key="window_ip", label_visibility="collapsed")
 
 with ctrl_cols[5]:
     st.markdown('<span class="control-label">📲 Device Window</span>', unsafe_allow_html=True)
-    window_device = st.slider("", 1, 48, 24, key="window_device", label_visibility="collapsed")
+    window_device = st.slider("Device Window", 1, 48, 24, key="window_device", label_visibility="collapsed")
 
 with ctrl_cols[6]:
     st.markdown('<span class="control-label">🎲 Seed</span>', unsafe_allow_html=True)
-    seed = st.number_input("", value=42, step=1, key="seed", label_visibility="collapsed")
+    seed = st.number_input("Seed", value=42, step=1, key="seed", label_visibility="collapsed")
 
 with ctrl_cols[7]:
     st.markdown('<span class="control-label">🔄 Action</span>', unsafe_allow_html=True)
-    if st.button("🔄 Regenerate", use_container_width=True):
+    if st.button("🔄 Regenerate", width='stretch'):
         st.cache_data.clear()
 
 st.markdown('</div>', unsafe_allow_html=True)
@@ -642,7 +642,7 @@ else:
                 .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
                 .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
             )
-            st.dataframe(styled_georgia, use_container_width=True, height=320)
+            st.dataframe(styled_georgia, width='stretch', height=320)
             csv_georgia = flagged_georgia[display_cols].to_csv(index=False)
             st.download_button(
                 t("download_flagged_csv"),
@@ -665,7 +665,7 @@ else:
                 .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
                 .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
             )
-            st.dataframe(styled_other, use_container_width=True, height=320)
+            st.dataframe(styled_other, width='stretch', height=320)
             csv_other = flagged_other[display_cols].to_csv(index=False)
             st.download_button(
                 t("download_flagged_csv"),
@@ -714,7 +714,7 @@ with st.expander(t("full_dataset"), expanded=False):
                     "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
                 })
             )
-            st.dataframe(full_styled_georgia, use_container_width=True, height=400)
+            st.dataframe(full_styled_georgia, width='stretch', height=400)
             csv_georgia = full_georgia[all_cols].to_csv(index=False)
             st.download_button(
                 t("download_full_csv"),
@@ -740,7 +740,7 @@ with st.expander(t("full_dataset"), expanded=False):
                     "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
                 })
             )
-            st.dataframe(full_styled_other, use_container_width=True, height=400)
+            st.dataframe(full_styled_other, width='stretch', height=400)
             csv_other = full_other[all_cols].to_csv(index=False)
             st.download_button(
                 t("download_full_csv"),
