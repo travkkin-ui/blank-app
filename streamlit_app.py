@@ -1,6 +1,671 @@
-import streamlit as st
+"""
+OTP Anomaly Detection Demo
+A hackathon prototype demonstrating rule-based anomaly detection for OTP requests.
+"""
 
-st.title("🎈 My new app")
-st.write(
-    "Let's start building! For help and inspiration, head over to [docs.streamlit.io](https://docs.streamlit.io/)."
+import streamlit as st
+import pandas as pd
+import numpy as np
+import random
+from datetime import datetime, timedelta
+from translations import get_text
+
+# ──────────────────────────────────────────────
+# PAGE CONFIG
+# ──────────────────────────────────────────────
+
+st.set_page_config(
+    page_title="OTP Anomaly Detector",
+    page_icon="🔐",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+# Initialize language in session state
+if "language" not in st.session_state:
+    st.session_state.language = "en"
+
+# ──────────────────────────────────────────────
+# CUSTOM CSS
+# ──────────────────────────────────────────────
+
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
+    html, body, [class*="css"] {
+        font-family: 'IBM Plex Sans', sans-serif;
+    }
+
+    .main .block-container {
+        padding-top: 2rem;
+        max-width: 1300px;
+    }
+
+    h1, h2, h3 {
+        font-family: 'IBM Plex Mono', monospace !important;
+        letter-spacing: -0.5px;
+    }
+
+    .metric-card {
+        background: #0f1117;
+        border: 1px solid #2a2d3e;
+        border-radius: 10px;
+        padding: 1.2rem 1.5rem;
+        text-align: center;
+    }
+
+    .metric-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #888;
+        font-family: 'IBM Plex Mono', monospace;
+        margin-bottom: 0.4rem;
+    }
+
+    .metric-value {
+        font-size: 2.4rem;
+        font-weight: 700;
+        font-family: 'IBM Plex Mono', monospace;
+        line-height: 1;
+    }
+
+    .metric-value.green  { color: #3dffa0; }
+    .metric-value.yellow { color: #ffd166; }
+    .metric-value.red    { color: #ff4d6d; }
+    .metric-value.white  { color: #f0f0f0; }
+
+    .risk-high   { color: #ff4d6d; font-weight: 700; }
+    .risk-medium { color: #ffd166; font-weight: 600; }
+    .risk-low    { color: #3dffa0; font-weight: 500; }
+
+    .tag {
+        display: inline-block;
+        padding: 0.15rem 0.6rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        font-family: 'IBM Plex Mono', monospace;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    .tag-block    { background: #ff4d6d22; color: #ff4d6d; border: 1px solid #ff4d6d55; }
+    .tag-throttle { background: #ffd16622; color: #ffd166; border: 1px solid #ffd16655; }
+    .tag-allow    { background: #3dffa022; color: #3dffa0; border: 1px solid #3dffa055; }
+
+    .section-header {
+        font-family: 'IBM Plex Mono', monospace;
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #555;
+        margin-bottom: 0.8rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid #2a2d3e;
+    }
+
+    .explain-box {
+        background: #0f1117;
+        border-left: 3px solid #3dffa0;
+        border-radius: 0 8px 8px 0;
+        padding: 1rem 1.5rem;
+        margin: 0.5rem 0;
+        font-size: 0.9rem;
+        line-height: 1.7;
+    }
+
+    .proto-badge {
+        display: inline-block;
+        background: #ffd16622;
+        color: #ffd166;
+        border: 1px solid #ffd16655;
+        border-radius: 20px;
+        padding: 0.2rem 0.9rem;
+        font-size: 0.7rem;
+        font-family: 'IBM Plex Mono', monospace;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-left: 0.8rem;
+        vertical-align: middle;
+    }
+</style>
+""", unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────
+# DATA GENERATION
+# ──────────────────────────────────────────────
+
+PHONES   = [f"+1555{str(i).zfill(7)}" for i in range(1, 60)]
+IPS_NORMAL  = [f"192.168.{random.randint(1,50)}.{random.randint(1,250)}" for _ in range(30)]
+IPS_ABUSE   = [f"10.0.{random.randint(1,5)}.{random.randint(1,10)}"      for _ in range(5)]
+DEVICES  = ["iPhone 15", "Samsung S24", "Pixel 8", "Chrome/Mac", "Firefox/Win", "Safari/iPad"]
+COUNTRIES = ["US", "GB", "DE", "FR", "CA", "AU", "IN", "BR"]
+
+
+def generate_normal_events(n: int, base_time: datetime) -> list[dict]:
+    """Generate realistic normal OTP requests spread across many users."""
+    events = []
+    for _ in range(n):
+        phone = random.choice(PHONES[:40])
+        events.append({
+            "timestamp": base_time - timedelta(minutes=random.uniform(0, 60)),
+            "phone":     phone,
+            "ip":        random.choice(IPS_NORMAL),
+            "device":    random.choice(DEVICES[:4]),
+            "country":   random.choice(COUNTRIES[:4]),
+            "status":    random.choices(["sent", "failed"], weights=[90, 10])[0],
+            "label":     "normal",
+        })
+    return events
+
+
+def generate_suspicious_events(n: int, base_time: datetime) -> list[dict]:
+    """Generate suspicious events: same phone hammered with OTPs repeatedly."""
+    events = []
+    # Pick a few phones that are being spammed
+    suspect_phones = random.sample(PHONES[:40], k=min(3, len(PHONES)))
+    for _ in range(n):
+        phone = random.choice(suspect_phones)
+        events.append({
+            "timestamp": base_time - timedelta(minutes=random.uniform(0, 15)),
+            "phone":     phone,
+            "ip":        random.choice(IPS_NORMAL[:5]),
+            "device":    random.choice(DEVICES),
+            "country":   random.choice(COUNTRIES),
+            "status":    random.choices(["sent", "failed"], weights=[40, 60])[0],
+            "label":     "suspicious",
+        })
+    return events
+
+
+def generate_abuse_events(n: int, base_time: datetime) -> list[dict]:
+    """Generate abuse events: one attacker IP hitting many different phone numbers."""
+    events = []
+    attacker_ip = random.choice(IPS_ABUSE)
+    for _ in range(n):
+        events.append({
+            "timestamp": base_time - timedelta(minutes=random.uniform(0, 10)),
+            "phone":     random.choice(PHONES[30:]),   # targets a different pool
+            "ip":        attacker_ip,
+            "device":    random.choice(DEVICES[-2:]),  # often same device/browser
+            "country":   random.choice(["RU", "CN", "NG", "VN"]),
+            "status":    random.choices(["sent", "failed"], weights=[60, 40])[0],
+            "label":     "abuse",
+        })
+    return events
+
+
+@st.cache_data(show_spinner=False)
+def generate_dataset(n_normal: int, n_suspicious: int, n_abuse: int, seed: int) -> pd.DataFrame:
+    """Build and shuffle the full synthetic dataset."""
+    random.seed(seed)
+    np.random.seed(seed)
+
+    base_time = datetime.now()
+    rows = (
+        generate_normal_events(n_normal, base_time)
+        + generate_suspicious_events(n_suspicious, base_time)
+        + generate_abuse_events(n_abuse, base_time)
+    )
+    df = pd.DataFrame(rows).sort_values("timestamp").reset_index(drop=True)
+    return df
+
+
+# ──────────────────────────────────────────────
+# FEATURE ENGINEERING
+# ──────────────────────────────────────────────
+
+def compute_features(df: pd.DataFrame,
+                     window_phone_min: int,
+                     window_ip_min: int,
+                     window_device_hours: int) -> pd.DataFrame:
+    """
+    For every row, compute:
+      - otp_per_phone   : how many OTPs this phone received in the last N minutes
+      - phones_per_ip   : how many unique phones came from this IP in the last N minutes
+      - devices_per_phone: unique devices seen for this phone in the last N hours
+      - country_change  : did the country change from the previous request for this phone?
+      - fail_streak     : consecutive failed attempts for this phone
+    """
+    df = df.copy().sort_values("timestamp").reset_index(drop=True)
+    ts = df["timestamp"]
+
+    otp_per_phone    = []
+    phones_per_ip    = []
+    devices_per_phone = []
+    country_change   = []
+    fail_streak      = []
+
+    for i, row in df.iterrows():
+        t = row["timestamp"]
+
+        # --- OTPs per phone in last `window_phone_min` minutes ---
+        w_phone = t - timedelta(minutes=window_phone_min)
+        mask_phone = (df["phone"] == row["phone"]) & (ts >= w_phone) & (ts <= t)
+        otp_per_phone.append(int(mask_phone.sum()))
+
+        # --- Unique phones per IP in last `window_ip_min` minutes ---
+        w_ip = t - timedelta(minutes=window_ip_min)
+        mask_ip = (df["ip"] == row["ip"]) & (ts >= w_ip) & (ts <= t)
+        phones_per_ip.append(int(df.loc[mask_ip, "phone"].nunique()))
+
+        # --- Unique devices per phone in last `window_device_hours` hours ---
+        w_dev = t - timedelta(hours=window_device_hours)
+        mask_dev = (df["phone"] == row["phone"]) & (ts >= w_dev) & (ts <= t)
+        devices_per_phone.append(int(df.loc[mask_dev, "device"].nunique()))
+
+        # --- Country change vs previous request from same phone ---
+        prev = df[(df["phone"] == row["phone"]) & (ts < t)]
+        if prev.empty:
+            country_change.append(False)
+        else:
+            last_country = prev.iloc[-1]["country"]
+            country_change.append(last_country != row["country"])
+
+        # --- Consecutive failures for this phone (look back up to 5 events) ---
+        prior = df[(df["phone"] == row["phone"]) & (ts < t)].tail(5)
+        streak = 0
+        for _, pr in prior[::-1].iterrows():
+            if pr["status"] == "failed":
+                streak += 1
+            else:
+                break
+        if row["status"] == "failed":
+            streak += 1
+        fail_streak.append(streak)
+
+    df["otp_per_phone"]     = otp_per_phone
+    df["phones_per_ip"]     = phones_per_ip
+    df["devices_per_phone"] = devices_per_phone
+    df["country_change"]    = country_change
+    df["fail_streak"]       = fail_streak
+    return df
+
+
+# ──────────────────────────────────────────────
+# RISK SCORING
+# ──────────────────────────────────────────────
+
+def score_row(row: pd.Series) -> tuple[int, str, str]:
+    """
+    Rule-based risk scoring (0–100).
+    Returns (score, reason_text, action).
+    """
+    score = 0
+    reasons = []
+
+    # Signal 1: Too many OTPs to the same phone recently
+    if row["otp_per_phone"] >= 10:
+        score += 35
+        reasons.append(f"{row['otp_per_phone']} OTPs to this phone in short window")
+    elif row["otp_per_phone"] >= 5:
+        score += 15
+        reasons.append(f"{row['otp_per_phone']} OTPs to this phone recently")
+
+    # Signal 2: One IP blasting many different phones
+    if row["phones_per_ip"] >= 10:
+        score += 40
+        reasons.append(f"IP targeted {row['phones_per_ip']} different phones")
+    elif row["phones_per_ip"] >= 5:
+        score += 20
+        reasons.append(f"IP targeted {row['phones_per_ip']} different phones")
+
+    # Signal 3: Multiple devices for the same phone
+    if row["devices_per_phone"] >= 4:
+        score += 15
+        reasons.append(f"{row['devices_per_phone']} devices used for this phone")
+    elif row["devices_per_phone"] >= 2:
+        score += 5
+        reasons.append(f"{row['devices_per_phone']} devices for this phone")
+
+    # Signal 4: Country changed between requests
+    if row["country_change"]:
+        score += 10
+        reasons.append("Country changed since last request")
+
+    # Signal 5: Repeated failures
+    if row["fail_streak"] >= 4:
+        score += 15
+        reasons.append(f"{row['fail_streak']} consecutive failures")
+    elif row["fail_streak"] >= 2:
+        score += 5
+        reasons.append(f"{row['fail_streak']} consecutive failures")
+
+    score = min(score, 100)
+
+    if not reasons:
+        reason_text = "No anomalies detected"
+    else:
+        reason_text = " · ".join(reasons)
+
+    # Decide action
+    if score >= 70:
+        action = "block"
+    elif score >= 35:
+        action = "throttle"
+    else:
+        action = "allow"
+
+    return score, reason_text, action
+
+
+def apply_scoring(df: pd.DataFrame) -> pd.DataFrame:
+    """Apply risk scoring to every row."""
+    results = df.apply(score_row, axis=1, result_type="expand")
+    results.columns = ["risk_score", "reason", "action"]
+    return pd.concat([df, results], axis=1)
+
+
+# ──────────────────────────────────────────────
+# DISPLAY HELPERS
+# ──────────────────────────────────────────────
+
+def highlight_risk(row: pd.Series) -> list[str]:
+    """Return row background colour based on risk score."""
+    s = row.get("risk_score", 0)
+    if s >= 70:
+        bg = "background-color: #ff4d6d18;"
+    elif s >= 35:
+        bg = "background-color: #ffd16618;"
+    else:
+        bg = ""
+    return [bg] * len(row)
+
+
+def risk_badge(score: int) -> str:
+    if score >= 70:
+        return f'<span class="risk-high">■ {score}</span>'
+    elif score >= 35:
+        return f'<span class="risk-medium">▲ {score}</span>'
+    else:
+        return f'<span class="risk-low">● {score}</span>'
+
+
+def action_tag(action: str) -> str:
+    cls = {"block": "tag-block", "throttle": "tag-throttle", "allow": "tag-allow"}[action]
+    return f'<span class="tag {cls}">{action.upper()}</span>'
+
+
+# ──────────────────────────────────────────────
+# SIDEBAR
+# ──────────────────────────────────────────────
+
+with st.sidebar:
+    # Language selector
+    lang_option = st.selectbox(
+        "🌐 Language / ენა",
+        options=["English", "ქართული (Georgian)"],
+        index=0 if st.session_state.language == "en" else 1,
+        key="lang_selector"
+    )
+    st.session_state.language = "en" if lang_option.startswith("English") else "ka"
+    
+    # Get translation function for current language
+    t = lambda key: get_text(key, st.session_state.language)
+    
+    st.markdown("---")
+    st.markdown(f"## {t('controls')}")
+    st.markdown("---")
+
+    st.markdown(f"**{t('event_counts')}**")
+    n_normal     = st.slider(t("normal_events"),     min_value=10, max_value=300, value=120, step=10)
+    n_suspicious = st.slider(t("suspicious_events"), min_value=5,  max_value=100, value=30,  step=5)
+    n_abuse      = st.slider(t("abuse_events"),      min_value=5,  max_value=100, value=20,  step=5)
+
+    st.markdown("---")
+    st.markdown(f"**{t('detection_windows')}**")
+    window_phone  = st.slider(t("otp_phone_window"),  5, 30, 10)
+    window_ip     = st.slider(t("phones_ip_window"),  5, 30, 15)
+    window_device = st.slider(t("devices_phone_window"), 1, 48, 24)
+
+    st.markdown("---")
+    seed = st.number_input(t("random_seed"), value=42, step=1)
+    if st.button(t("regenerate_data"), use_container_width=True):
+        st.cache_data.clear()
+
+    st.markdown("---")
+    st.markdown(
+        f"<div style='font-size:0.75rem;color:#555;line-height:1.6'>"
+        f"{t('footer_text')}"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ──────────────────────────────────────────────
+# HEADER
+# ──────────────────────────────────────────────
+
+# Get translation function (defined once after language is set in sidebar)
+t = lambda key: get_text(key, st.session_state.language)
+
+st.markdown(
+    f'<h1 style="margin-bottom:0.2rem">🔐 {t("page_title")}'
+    f'<span class="proto-badge">Prototype</span></h1>',
+    unsafe_allow_html=True,
+)
+st.markdown(
+    f'<p style="color:#888;margin-top:0;font-size:0.95rem">'
+    f'{t("page_subtitle")}</p>',
+    unsafe_allow_html=True,
+)
+
+
+# ──────────────────────────────────────────────
+# PIPELINE
+# ──────────────────────────────────────────────
+
+with st.spinner("Generating and analysing data…"):
+    raw_df      = generate_dataset(n_normal, n_suspicious, n_abuse, seed=int(seed))
+    featured_df = compute_features(raw_df, window_phone, window_ip, window_device)
+    scored_df   = apply_scoring(featured_df)
+
+total    = len(scored_df)
+flagged  = (scored_df["risk_score"] >= 35).sum()
+blocked  = (scored_df["action"] == "block").sum()
+throttled = (scored_df["action"] == "throttle").sum()
+flag_pct = flagged / total * 100 if total else 0
+
+
+# ──────────────────────────────────────────────
+# METRICS ROW
+# ──────────────────────────────────────────────
+
+st.markdown(f'<p class="section-header">{t("overview")}</p>', unsafe_allow_html=True)
+c1, c2, c3, c4, c5 = st.columns(5)
+
+def metric_card(col, label, value, colour):
+    col.markdown(
+        f'<div class="metric-card">'
+        f'<div class="metric-label">{label}</div>'
+        f'<div class="metric-value {colour}">{value}</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+metric_card(c1, t("total_events"),   total,                  "white")
+metric_card(c2, t("flagged"),        flagged,                "yellow")
+metric_card(c3, t("blocked"),        blocked,                "red")
+metric_card(c4, t("throttled"),      throttled,              "yellow")
+metric_card(c5, t("flag_rate"),      f"{flag_pct:.1f}%",     "white" if flag_pct < 10 else "yellow")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────
+# CHARTS
+# ──────────────────────────────────────────────
+
+st.markdown(f'<p class="section-header">{t("distribution")}</p>', unsafe_allow_html=True)
+ch1, ch2 = st.columns(2)
+
+with ch1:
+    st.markdown(f"**{t('risk_score_distribution')}**")
+    bins = pd.cut(
+        scored_df["risk_score"],
+        bins=[0, 10, 34, 69, 100],
+        labels=[t("low_risk"), t("moderate_risk"), t("high_risk"), t("critical_risk")],
+    )
+    dist = bins.value_counts().reindex([t("low_risk"), t("moderate_risk"), t("high_risk"), t("critical_risk")])
+    st.bar_chart(dist, color="#3dffa0", height=220)
+
+with ch2:
+    st.markdown(f"**{t('action_breakdown')}**")
+    action_counts = scored_df["action"].value_counts()
+    st.bar_chart(action_counts, color="#ffd166", height=220)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────
+# FLAGGED EVENTS TABLE
+# ──────────────────────────────────────────────
+
+st.markdown(f'<p class="section-header">{t("flagged_events")}</p>', unsafe_allow_html=True)
+st.markdown(f"**{t('events_requiring_attention')}**")
+
+flagged_df = (
+    scored_df[scored_df["risk_score"] >= 35]
+    .sort_values("risk_score", ascending=False)
+    .reset_index(drop=True)
+)
+
+if flagged_df.empty:
+    st.info(t("no_flagged_events"))
+else:
+    display_cols = ["timestamp", "phone", "ip", "country", "device",
+                    "status", "risk_score", "action", "reason"]
+    styled = (
+        flagged_df[display_cols]
+        .style
+        .apply(highlight_risk, axis=1)
+        .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
+        .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
+    )
+    st.dataframe(styled, use_container_width=True, height=320)
+
+    csv_flagged = flagged_df[display_cols].to_csv(index=False)
+    st.download_button(
+        t("download_flagged_csv"),
+        data=csv_flagged,
+        file_name=t("flagged_filename"),
+        mime="text/csv",
+    )
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────
+# FULL FEATURE TABLE
+# ──────────────────────────────────────────────
+
+with st.expander(t("full_dataset"), expanded=False):
+    all_cols = [
+        "timestamp", "phone", "ip", "country", "device", "status", "label",
+        "otp_per_phone", "phones_per_ip", "devices_per_phone",
+        "country_change", "fail_streak",
+        "risk_score", "action", "reason",
+    ]
+    full_styled = (
+        scored_df[all_cols]
+        .style
+        .apply(highlight_risk, axis=1)
+        .format({
+            "timestamp": lambda x: x.strftime("%H:%M:%S"),
+            "risk_score": "{:.0f}",
+            "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
+        })
+    )
+    st.dataframe(full_styled, use_container_width=True, height=400)
+
+    csv_full = scored_df[all_cols].to_csv(index=False)
+    st.download_button(
+        t("download_full_csv"),
+        data=csv_full,
+        file_name=t("full_filename"),
+        mime="text/csv",
+    )
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+
+# ──────────────────────────────────────────────
+# HOW IT WORKS
+# ──────────────────────────────────────────────
+
+st.markdown(f'<p class="section-header">{t("how_it_works")}</p>', unsafe_allow_html=True)
+
+with st.expander(t("explanation"), expanded=True):
+    col_a, col_b = st.columns(2)
+
+    with col_a:
+        st.markdown(f"#### {t('signals_used')}")
+        st.markdown(
+            f'<div class="explain-box">'
+            f'<b>{t("signal_1_title")}</b><br>'
+            f'{t("signal_1_desc")}<br><br>'
+            f'<b>{t("signal_2_title")}</b><br>'
+            f'{t("signal_2_desc")}<br><br>'
+            f'<b>{t("signal_3_title")}</b><br>'
+            f'{t("signal_3_desc")}<br><br>'
+            f'<b>{t("signal_4_title")}</b><br>'
+            f'{t("signal_4_desc")}<br><br>'
+            f'<b>{t("signal_5_title")}</b><br>'
+            f'{t("signal_5_desc")}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    with col_b:
+        st.markdown(f"#### {t('scoring_actions')}")
+        st.markdown(
+            f'<div class="explain-box">'
+            f'{t("scoring_intro")}<br><br>'
+            f'<b>{t("allow")}</b> — {t("allow_desc")}<br><br>'
+            f'<b>{t("throttle")}</b> — {t("throttle_desc")}<br><br>'
+            f'<b>{t("block")}</b> — {t("block_desc")}<br><br>'
+            f'<hr style="border-color:#2a2d3e">'
+            f'{t("prototype_warning")}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    st.markdown(f"#### {t('scenarios')}")
+    s1, s2, s3 = st.columns(3)
+    with s1:
+        st.markdown(
+            f'<div class="explain-box">'
+            f'{t("scenario_normal_title")}<br>'
+            f'{t("scenario_normal_desc")}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with s2:
+        st.markdown(
+            f'<div class="explain-box">'
+            f'{t("scenario_suspicious_title")}<br>'
+            f'{t("scenario_suspicious_desc")}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+    with s3:
+        st.markdown(
+            f'<div class="explain-box">'
+            f'{t("scenario_abuse_title")}<br>'
+            f'{t("scenario_abuse_desc")}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+# ──────────────────────────────────────────────
+# FOOTER
+# ──────────────────────────────────────────────
+
+st.markdown(
+    f'<hr style="border-color:#2a2d3e;margin-top:2rem">'
+    f'<p style="text-align:center;color:#444;font-size:0.78rem;font-family:\'IBM Plex Mono\',monospace">'
+    f'{t("final_footer")}'
+    f'</p>',
+    unsafe_allow_html=True,
 )
