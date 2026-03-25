@@ -140,20 +140,24 @@ PHONES   = [f"+1555{str(i).zfill(7)}" for i in range(1, 60)]
 IPS_NORMAL  = [f"192.168.{random.randint(1,50)}.{random.randint(1,250)}" for _ in range(30)]
 IPS_ABUSE   = [f"10.0.{random.randint(1,5)}.{random.randint(1,10)}"      for _ in range(5)]
 DEVICES  = ["iPhone 15", "Samsung S24", "Pixel 8", "Chrome/Mac", "Firefox/Win", "Safari/iPad"]
-COUNTRIES = ["US", "GB", "DE", "FR", "CA", "AU", "IN", "BR"]
+COUNTRIES = ["GE", "US", "GB", "DE", "FR", "CA", "AU", "IN", "BR"]
+COUNTRIES_GEORGIA = ["GE"]
+COUNTRIES_OTHER = ["US", "GB", "DE", "FR", "CA", "AU", "IN", "BR"]
 
 
 def generate_normal_events(n: int, base_time: datetime) -> list[dict]:
-    """Generate realistic normal OTP requests spread across many users."""
+    """Generate realistic normal OTP requests spread across many users. ~50% from Georgia."""
     events = []
     for _ in range(n):
         phone = random.choice(PHONES[:40])
+        # ~50% from Georgia, ~50% from other countries
+        country = random.choice(COUNTRIES_GEORGIA) if random.random() < 0.5 else random.choice(COUNTRIES_OTHER)
         events.append({
             "timestamp": base_time - timedelta(minutes=random.uniform(0, 60)),
             "phone":     phone,
             "ip":        random.choice(IPS_NORMAL),
             "device":    random.choice(DEVICES[:4]),
-            "country":   random.choice(COUNTRIES[:4]),
+            "country":   country,
             "status":    random.choices(["sent", "failed"], weights=[90, 10])[0],
             "label":     "normal",
         })
@@ -161,18 +165,20 @@ def generate_normal_events(n: int, base_time: datetime) -> list[dict]:
 
 
 def generate_suspicious_events(n: int, base_time: datetime) -> list[dict]:
-    """Generate suspicious events: same phone hammered with OTPs repeatedly."""
+    """Generate suspicious events: same phone hammered with OTPs repeatedly. ~50% from Georgia."""
     events = []
     # Pick a few phones that are being spammed
     suspect_phones = random.sample(PHONES[:40], k=min(3, len(PHONES)))
     for _ in range(n):
         phone = random.choice(suspect_phones)
+        # ~50% from Georgia, ~50% from other countries
+        country = random.choice(COUNTRIES_GEORGIA) if random.random() < 0.5 else random.choice(COUNTRIES_OTHER)
         events.append({
             "timestamp": base_time - timedelta(minutes=random.uniform(0, 15)),
             "phone":     phone,
             "ip":        random.choice(IPS_NORMAL[:5]),
             "device":    random.choice(DEVICES),
-            "country":   random.choice(COUNTRIES),
+            "country":   country,
             "status":    random.choices(["sent", "failed"], weights=[40, 60])[0],
             "label":     "suspicious",
         })
@@ -387,6 +393,17 @@ def action_tag(action: str) -> str:
     return f'<span class="tag {cls}">{action.upper()}</span>'
 
 
+def country_to_flag(country_code: str) -> str:
+    """Convert country code to flag emoji and return with country code."""
+    flag_map = {
+        "GE": "🇬🇪", "US": "🇺🇸", "GB": "🇬🇧", "DE": "🇩🇪", "FR": "🇫🇷",
+        "CA": "🇨🇦", "AU": "🇦🇺", "IN": "🇮🇳", "BR": "🇧🇷",
+        "RU": "🇷🇺", "CN": "🇨🇳", "NG": "🇳🇬", "VN": "🇻🇳",
+    }
+    flag = flag_map.get(country_code, "🏴")
+    return f"{flag} {country_code}"
+
+
 # ──────────────────────────────────────────────
 # SIDEBAR
 # ──────────────────────────────────────────────
@@ -534,24 +551,62 @@ flagged_df = (
 if flagged_df.empty:
     st.info(t("no_flagged_events"))
 else:
+    # Separate flagged events by region
+    flagged_georgia = flagged_df[flagged_df["country"] == "GE"].reset_index(drop=True)
+    flagged_other = flagged_df[flagged_df["country"] != "GE"].reset_index(drop=True)
+    
+    # Create tabs for each region
+    tab_georgia, tab_other = st.tabs([f"🇬🇪 Georgian Region ({len(flagged_georgia)})", 
+                                       f"🌍 Other Countries ({len(flagged_other)})"])
+    
     display_cols = ["timestamp", "phone", "ip", "country", "device",
                     "status", "risk_score", "action", "reason"]
-    styled = (
-        flagged_df[display_cols]
-        .style
-        .apply(highlight_risk, axis=1)
-        .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
-        .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
-    )
-    st.dataframe(styled, use_container_width=True, height=320)
-
-    csv_flagged = flagged_df[display_cols].to_csv(index=False)
-    st.download_button(
-        t("download_flagged_csv"),
-        data=csv_flagged,
-        file_name=t("flagged_filename"),
-        mime="text/csv",
-    )
+    
+    # Georgian Region Tab
+    with tab_georgia:
+        if flagged_georgia.empty:
+            st.info("No flagged events from Georgian region")
+        else:
+            display_df_georgia = flagged_georgia[display_cols].copy()
+            display_df_georgia["country"] = display_df_georgia["country"].apply(country_to_flag)
+            styled_georgia = (
+                display_df_georgia
+                .style
+                .apply(highlight_risk, axis=1)
+                .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
+                .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
+            )
+            st.dataframe(styled_georgia, use_container_width=True, height=320)
+            csv_georgia = flagged_georgia[display_cols].to_csv(index=False)
+            st.download_button(
+                t("download_flagged_csv"),
+                data=csv_georgia,
+                file_name="flagged_georgian_region.csv",
+                mime="text/csv",
+            )
+    
+    # Other Countries Tab
+    with tab_other:
+        if flagged_other.empty:
+            st.info("No flagged events from other countries")
+        else:
+            display_df_other = flagged_other[display_cols].copy()
+            display_df_other["country"] = display_df_other["country"].apply(country_to_flag)
+            styled_other = (
+                display_df_other
+                .style
+                .apply(highlight_risk, axis=1)
+                .format({"timestamp": lambda x: x.strftime("%H:%M:%S"), "risk_score": "{:.0f}"})
+                .background_gradient(subset=["risk_score"], cmap="Reds", vmin=0, vmax=100)
+            )
+            st.dataframe(styled_other, use_container_width=True, height=320)
+            csv_other = flagged_other[display_cols].to_csv(index=False)
+            st.download_button(
+                t("download_flagged_csv"),
+                data=csv_other,
+                file_name="flagged_other_countries.csv",
+                mime="text/csv",
+            )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -567,25 +622,66 @@ with st.expander(t("full_dataset"), expanded=False):
         "country_change", "fail_streak",
         "risk_score", "action", "reason",
     ]
-    full_styled = (
-        scored_df[all_cols]
-        .style
-        .apply(highlight_risk, axis=1)
-        .format({
-            "timestamp": lambda x: x.strftime("%H:%M:%S"),
-            "risk_score": "{:.0f}",
-            "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
-        })
-    )
-    st.dataframe(full_styled, use_container_width=True, height=400)
-
-    csv_full = scored_df[all_cols].to_csv(index=False)
-    st.download_button(
-        t("download_full_csv"),
-        data=csv_full,
-        file_name=t("full_filename"),
-        mime="text/csv",
-    )
+    
+    # Separate data by region
+    full_georgia = scored_df[scored_df["country"] == "GE"].reset_index(drop=True)
+    full_other = scored_df[scored_df["country"] != "GE"].reset_index(drop=True)
+    
+    # Create tabs for each region
+    tab_full_georgia, tab_full_other = st.tabs([f"🇬🇪 Georgian Region ({len(full_georgia)})", 
+                                                  f"🌍 Other Countries ({len(full_other)})"])
+    
+    # Georgian Region Tab
+    with tab_full_georgia:
+        if full_georgia.empty:
+            st.info("No data from Georgian region")
+        else:
+            full_df_georgia = full_georgia[all_cols].copy()
+            full_df_georgia["country"] = full_df_georgia["country"].apply(country_to_flag)
+            full_styled_georgia = (
+                full_df_georgia
+                .style
+                .apply(highlight_risk, axis=1)
+                .format({
+                    "timestamp": lambda x: x.strftime("%H:%M:%S"),
+                    "risk_score": "{:.0f}",
+                    "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
+                })
+            )
+            st.dataframe(full_styled_georgia, use_container_width=True, height=400)
+            csv_georgia = full_georgia[all_cols].to_csv(index=False)
+            st.download_button(
+                t("download_full_csv"),
+                data=csv_georgia,
+                file_name="full_dataset_georgian_region.csv",
+                mime="text/csv",
+            )
+    
+    # Other Countries Tab
+    with tab_full_other:
+        if full_other.empty:
+            st.info("No data from other countries")
+        else:
+            full_df_other = full_other[all_cols].copy()
+            full_df_other["country"] = full_df_other["country"].apply(country_to_flag)
+            full_styled_other = (
+                full_df_other
+                .style
+                .apply(highlight_risk, axis=1)
+                .format({
+                    "timestamp": lambda x: x.strftime("%H:%M:%S"),
+                    "risk_score": "{:.0f}",
+                    "country_change": lambda x: t("country_change_icon") if x else t("country_no_change_icon"),
+                })
+            )
+            st.dataframe(full_styled_other, use_container_width=True, height=400)
+            csv_other = full_other[all_cols].to_csv(index=False)
+            st.download_button(
+                t("download_full_csv"),
+                data=csv_other,
+                file_name="full_dataset_other_countries.csv",
+                mime="text/csv",
+            )
 
 st.markdown("<br>", unsafe_allow_html=True)
 
