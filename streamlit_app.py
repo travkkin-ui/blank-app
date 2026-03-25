@@ -41,7 +41,7 @@ st.markdown("""
 
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
-        background: linear-gradient(135deg, #0a0e27 0%, #1a1428 100%);
+        background: #0f1419;
     }
 
     .main .block-container {
@@ -59,7 +59,7 @@ st.markdown("""
     h1 {
         font-weight: 700;
         font-size: 2.5rem;
-        background: linear-gradient(135deg, #3dffa0 0%, #00f0ff 100%);
+        background: linear-gradient(135deg, #6366f1 0%, #10b981 100%);
         background-clip: text;
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
@@ -67,8 +67,8 @@ st.markdown("""
     }
 
     .metric-card {
-        background: linear-gradient(135deg, rgba(61, 255, 160, 0.05) 0%, rgba(0, 240, 255, 0.05) 100%);
-        border: 1px solid rgba(61, 255, 160, 0.2);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.2);
         border-radius: 16px;
         padding: 1.5rem 1.8rem;
         text-align: center;
@@ -78,9 +78,9 @@ st.markdown("""
     }
 
     .metric-card:hover {
-        background: linear-gradient(135deg, rgba(61, 255, 160, 0.1) 0%, rgba(0, 240, 255, 0.1) 100%);
-        border-color: rgba(61, 255, 160, 0.4);
-        box-shadow: 0 12px 48px rgba(61, 255, 160, 0.15);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(16, 185, 129, 0.15) 100%);
+        border-color: rgba(99, 102, 241, 0.4);
+        box-shadow: 0 12px 48px rgba(99, 102, 241, 0.15);
         transform: translateY(-2px);
     }
 
@@ -88,7 +88,7 @@ st.markdown("""
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #a0aec0;
+        color: #9ca3af;
         font-family: 'IBM Plex Mono', monospace;
         margin-bottom: 0.6rem;
         font-weight: 600;
@@ -101,14 +101,14 @@ st.markdown("""
         line-height: 1;
     }
 
-    .metric-value.green  { color: #3dffa0; }
-    .metric-value.yellow { color: #ffd166; }
-    .metric-value.red    { color: #ff4d6d; }
-    .metric-value.white  { color: #f0f0f0; }
+    .metric-value.green  { color: #10b981; }
+    .metric-value.yellow { color: #f59e0b; }
+    .metric-value.red    { color: #ef4444; }
+    .metric-value.white  { color: #e5e7eb; }
 
-    .risk-high   { color: #ff4d6d; font-weight: 700; }
-    .risk-medium { color: #ffd166; font-weight: 600; }
-    .risk-low    { color: #3dffa0; font-weight: 500; }
+    .risk-high   { color: #ef4444; font-weight: 700; }
+    .risk-medium { color: #f59e0b; font-weight: 600; }
+    .risk-low    { color: #10b981; font-weight: 500; }
 
     .tag {
         display: inline-block;
@@ -119,40 +119,40 @@ st.markdown("""
         font-weight: 600;
         letter-spacing: 0.5px;
     }
-    .tag-block    { background: rgba(255, 77, 109, 0.15); color: #ff4d6d; border: 1px solid rgba(255, 77, 109, 0.5); }
-    .tag-throttle { background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.5); }
-    .tag-allow    { background: rgba(61, 255, 160, 0.15); color: #3dffa0; border: 1px solid rgba(61, 255, 160, 0.5); }
+    .tag-block    { background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.5); }
+    .tag-throttle { background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.5); }
+    .tag-allow    { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.5); }
 
     .section-header {
         font-family: 'IBM Plex Mono', monospace;
         font-size: 0.65rem;
         text-transform: uppercase;
         letter-spacing: 2px;
-        color: #a0aec0;
+        color: #9ca3af;
         margin: 1.5rem 0 0.8rem 0;
         padding-bottom: 0.6rem;
-        border-bottom: 2px solid rgba(61, 255, 160, 0.3);
+        border-bottom: 2px solid rgba(99, 102, 241, 0.3);
         font-weight: 600;
     }
 
     .explain-box {
-        background: linear-gradient(135deg, rgba(61, 255, 160, 0.05) 0%, rgba(0, 240, 255, 0.05) 100%);
-        border-left: 4px solid #3dffa0;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(16, 185, 129, 0.08) 100%);
+        border-left: 4px solid #6366f1;
         border-radius: 12px;
         padding: 1.5rem;
         margin: 0.8rem 0;
         font-size: 0.9rem;
         line-height: 1.8;
-        color: #e2e8f0;
+        color: #e5e7eb;
         backdrop-filter: blur(10px);
-        border: 1px solid rgba(61, 255, 160, 0.2);
+        border: 1px solid rgba(99, 102, 241, 0.2);
     }
 
     .proto-badge {
         display: inline-block;
-        background: linear-gradient(135deg, rgba(255, 209, 102, 0.2) 0%, rgba(255, 209, 102, 0.1) 100%);
-        color: #ffd166;
-        border: 1px solid rgba(255, 209, 102, 0.5);
+        background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.1) 100%);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.5);
         border-radius: 24px;
         padding: 0.3rem 1.2rem;
         font-size: 0.75rem;
@@ -164,21 +164,30 @@ st.markdown("""
         font-weight: 600;
     }
 
-    .control-panel {
-        background: linear-gradient(135deg, rgba(26, 20, 40, 0.8) 0%, rgba(15, 17, 23, 0.8) 100%);
-        border: 1px solid rgba(61, 255, 160, 0.15);
-        border-radius: 16px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
+    .control-section {
+        background: linear-gradient(135deg, rgba(17, 24, 39, 0.8) 0%, rgba(15, 23, 42, 0.8) 100%);
+        border: 1px solid rgba(99, 102, 241, 0.15);
+        border-radius: 14px;
+        padding: 1.2rem;
+        margin-bottom: 1.2rem;
         backdrop-filter: blur(10px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .control-section-title {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #9ca3af;
+        font-weight: 600;
+        margin-bottom: 1rem;
     }
 
     .control-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #a0aec0;
+        color: #9ca3af;
         font-weight: 600;
         margin-bottom: 0.5rem;
         display: block;
@@ -488,46 +497,54 @@ st.markdown(
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'<p style="color:#a0aec0;margin-top:0;font-size:1rem;margin-bottom:1.5rem">'
+    f'<p style="color:#9ca3af;margin-top:0;font-size:1rem;margin-bottom:1.5rem">'
     f'{t("page_subtitle")}</p>',
     unsafe_allow_html=True,
 )
 
-# Control Panel
-st.markdown(f'<div class="control-panel">', unsafe_allow_html=True)
-st.markdown(f'<p style="font-size:0.8rem;text-transform:uppercase;color:#a0aec0;letter-spacing:1.5px;font-weight:600;margin-bottom:1.5rem">{t("controls")}</p>', unsafe_allow_html=True)
+# Control Panel - Section 1: Event Configuration
+st.markdown(f'<div class="control-section">', unsafe_allow_html=True)
+st.markdown(f'<p class="control-section-title">📊 {t("event_counts")}</p>', unsafe_allow_html=True)
 
-ctrl_cols = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+ctrl_cols_1 = st.columns([1, 1, 1])
 
-with ctrl_cols[0]:
+with ctrl_cols_1[0]:
     st.markdown('<span class="control-label">📊 ' + t("normal_events") + '</span>', unsafe_allow_html=True)
     n_normal = st.slider(t("normal_events"), min_value=10, max_value=300, value=120, step=10, key="n_normal", label_visibility="collapsed")
 
-with ctrl_cols[1]:
+with ctrl_cols_1[1]:
     st.markdown('<span class="control-label">⚠️ ' + t("suspicious_events") + '</span>', unsafe_allow_html=True)
     n_suspicious = st.slider(t("suspicious_events"), min_value=5, max_value=100, value=30, step=5, key="n_suspicious", label_visibility="collapsed")
 
-with ctrl_cols[2]:
+with ctrl_cols_1[2]:
     st.markdown('<span class="control-label">🔴 ' + t("abuse_events") + '</span>', unsafe_allow_html=True)
     n_abuse = st.slider(t("abuse_events"), min_value=5, max_value=100, value=20, step=5, key="n_abuse", label_visibility="collapsed")
 
-with ctrl_cols[3]:
+st.markdown('</div>', unsafe_allow_html=True)
+
+# Control Panel - Section 2: Detection Windows
+st.markdown(f'<div class="control-section">', unsafe_allow_html=True)
+st.markdown(f'<p class="control-section-title">⚙️ {t("detection_windows")}</p>', unsafe_allow_html=True)
+
+ctrl_cols_2 = st.columns([1, 1, 1, 1, 1])
+
+with ctrl_cols_2[0]:
     st.markdown('<span class="control-label">📱 OTP Window</span>', unsafe_allow_html=True)
     window_phone = st.slider("OTP Window", 5, 30, 10, key="window_phone", label_visibility="collapsed")
 
-with ctrl_cols[4]:
+with ctrl_cols_2[1]:
     st.markdown('<span class="control-label">🌐 IP Window</span>', unsafe_allow_html=True)
     window_ip = st.slider("IP Window", 5, 30, 15, key="window_ip", label_visibility="collapsed")
 
-with ctrl_cols[5]:
+with ctrl_cols_2[2]:
     st.markdown('<span class="control-label">📲 Device Window</span>', unsafe_allow_html=True)
     window_device = st.slider("Device Window", 1, 48, 24, key="window_device", label_visibility="collapsed")
 
-with ctrl_cols[6]:
+with ctrl_cols_2[3]:
     st.markdown('<span class="control-label">🎲 Seed</span>', unsafe_allow_html=True)
     seed = st.number_input("Seed", value=42, step=1, key="seed", label_visibility="collapsed")
 
-with ctrl_cols[7]:
+with ctrl_cols_2[4]:
     st.markdown('<span class="control-label">🔄 Action</span>', unsafe_allow_html=True)
     if st.button("🔄 Regenerate", width='stretch'):
         st.cache_data.clear()
