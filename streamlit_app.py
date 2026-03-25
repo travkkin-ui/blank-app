@@ -18,12 +18,12 @@ st.set_page_config(
     page_title="OTP Anomaly Detector",
     page_icon="🔐",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # Initialize language in session state
 if "language" not in st.session_state:
-    st.session_state.language = "en"
+    st.session_state.language = "ka"
 
 # ──────────────────────────────────────────────
 # CUSTOM CSS
@@ -31,41 +31,71 @@ if "language" not in st.session_state:
 
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap');
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
     html, body, [class*="css"] {
-        font-family: 'IBM Plex Sans', sans-serif;
+        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1428 100%);
     }
 
     .main .block-container {
-        padding-top: 2rem;
-        max-width: 1300px;
+        padding-top: 1.5rem;
+        padding-bottom: 2rem;
+        max-width: 1400px;
     }
 
-    h1, h2, h3 {
-        font-family: 'IBM Plex Mono', monospace !important;
+    h1, h2 {
+        font-family: 'Inter', sans-serif;
         letter-spacing: -0.5px;
+        color: #fff;
+    }
+
+    h1 {
+        font-weight: 700;
+        font-size: 2.5rem;
+        background: linear-gradient(135deg, #3dffa0 0%, #00f0ff 100%);
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
     }
 
     .metric-card {
-        background: #0f1117;
-        border: 1px solid #2a2d3e;
-        border-radius: 10px;
-        padding: 1.2rem 1.5rem;
+        background: linear-gradient(135deg, rgba(61, 255, 160, 0.05) 0%, rgba(0, 240, 255, 0.05) 100%);
+        border: 1px solid rgba(61, 255, 160, 0.2);
+        border-radius: 16px;
+        padding: 1.5rem 1.8rem;
         text-align: center;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .metric-card:hover {
+        background: linear-gradient(135deg, rgba(61, 255, 160, 0.1) 0%, rgba(0, 240, 255, 0.1) 100%);
+        border-color: rgba(61, 255, 160, 0.4);
+        box-shadow: 0 12px 48px rgba(61, 255, 160, 0.15);
+        transform: translateY(-2px);
     }
 
     .metric-label {
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 1.5px;
-        color: #888;
+        color: #a0aec0;
         font-family: 'IBM Plex Mono', monospace;
-        margin-bottom: 0.4rem;
+        margin-bottom: 0.6rem;
+        font-weight: 600;
     }
 
     .metric-value {
-        font-size: 2.4rem;
+        font-size: 2.8rem;
         font-weight: 700;
         font-family: 'IBM Plex Mono', monospace;
         line-height: 1;
@@ -82,51 +112,80 @@ st.markdown("""
 
     .tag {
         display: inline-block;
-        padding: 0.15rem 0.6rem;
-        border-radius: 4px;
-        font-size: 0.75rem;
+        padding: 0.2rem 0.8rem;
+        border-radius: 20px;
+        font-size: 0.7rem;
         font-family: 'IBM Plex Mono', monospace;
         font-weight: 600;
         letter-spacing: 0.5px;
     }
-    .tag-block    { background: #ff4d6d22; color: #ff4d6d; border: 1px solid #ff4d6d55; }
-    .tag-throttle { background: #ffd16622; color: #ffd166; border: 1px solid #ffd16655; }
-    .tag-allow    { background: #3dffa022; color: #3dffa0; border: 1px solid #3dffa055; }
+    .tag-block    { background: rgba(255, 77, 109, 0.15); color: #ff4d6d; border: 1px solid rgba(255, 77, 109, 0.5); }
+    .tag-throttle { background: rgba(255, 209, 102, 0.15); color: #ffd166; border: 1px solid rgba(255, 209, 102, 0.5); }
+    .tag-allow    { background: rgba(61, 255, 160, 0.15); color: #3dffa0; border: 1px solid rgba(61, 255, 160, 0.5); }
 
     .section-header {
         font-family: 'IBM Plex Mono', monospace;
-        font-size: 0.7rem;
+        font-size: 0.65rem;
         text-transform: uppercase;
         letter-spacing: 2px;
-        color: #555;
-        margin-bottom: 0.8rem;
-        padding-bottom: 0.4rem;
-        border-bottom: 1px solid #2a2d3e;
+        color: #a0aec0;
+        margin: 1.5rem 0 0.8rem 0;
+        padding-bottom: 0.6rem;
+        border-bottom: 2px solid rgba(61, 255, 160, 0.3);
+        font-weight: 600;
     }
 
     .explain-box {
-        background: #0f1117;
-        border-left: 3px solid #3dffa0;
-        border-radius: 0 8px 8px 0;
-        padding: 1rem 1.5rem;
-        margin: 0.5rem 0;
+        background: linear-gradient(135deg, rgba(61, 255, 160, 0.05) 0%, rgba(0, 240, 255, 0.05) 100%);
+        border-left: 4px solid #3dffa0;
+        border-radius: 12px;
+        padding: 1.5rem;
+        margin: 0.8rem 0;
         font-size: 0.9rem;
-        line-height: 1.7;
+        line-height: 1.8;
+        color: #e2e8f0;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(61, 255, 160, 0.2);
     }
 
     .proto-badge {
         display: inline-block;
-        background: #ffd16622;
+        background: linear-gradient(135deg, rgba(255, 209, 102, 0.2) 0%, rgba(255, 209, 102, 0.1) 100%);
         color: #ffd166;
-        border: 1px solid #ffd16655;
-        border-radius: 20px;
-        padding: 0.2rem 0.9rem;
-        font-size: 0.7rem;
+        border: 1px solid rgba(255, 209, 102, 0.5);
+        border-radius: 24px;
+        padding: 0.3rem 1.2rem;
+        font-size: 0.75rem;
         font-family: 'IBM Plex Mono', monospace;
         letter-spacing: 1px;
         text-transform: uppercase;
-        margin-left: 0.8rem;
+        margin-left: 1rem;
         vertical-align: middle;
+        font-weight: 600;
+    }
+
+    .control-panel {
+        background: linear-gradient(135deg, rgba(26, 20, 40, 0.8) 0%, rgba(15, 17, 23, 0.8) 100%);
+        border: 1px solid rgba(61, 255, 160, 0.15);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 2rem;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .control-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #a0aec0;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .dataframe {
+        background: rgba(26, 20, 40, 0.6) !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -405,68 +464,75 @@ def country_to_flag(country_code: str) -> str:
 
 
 # ──────────────────────────────────────────────
-# SIDEBAR
+# HEADER & CONTROLS
 # ──────────────────────────────────────────────
 
-with st.sidebar:
-    # Language selector
+# Language selector (top right)
+col_lang = st.columns([10, 1])
+with col_lang[1]:
     lang_option = st.selectbox(
-        "🌐 Language / ენა",
+        "🌐",
         options=["English", "ქართული (Georgian)"],
         index=0 if st.session_state.language == "en" else 1,
-        key="lang_selector"
+        key="lang_selector",
+        label_visibility="collapsed"
     )
     st.session_state.language = "en" if lang_option.startswith("English") else "ka"
-    
-    # Get translation function for current language
-    t = lambda key: get_text(key, st.session_state.language)
-    
-    st.markdown("---")
-    st.markdown(f"## {t('controls')}")
-    st.markdown("---")
 
-    st.markdown(f"**{t('event_counts')}**")
-    n_normal     = st.slider(t("normal_events"),     min_value=10, max_value=300, value=120, step=10)
-    n_suspicious = st.slider(t("suspicious_events"), min_value=5,  max_value=100, value=30,  step=5)
-    n_abuse      = st.slider(t("abuse_events"),      min_value=5,  max_value=100, value=20,  step=5)
-
-    st.markdown("---")
-    st.markdown(f"**{t('detection_windows')}**")
-    window_phone  = st.slider(t("otp_phone_window"),  5, 30, 10)
-    window_ip     = st.slider(t("phones_ip_window"),  5, 30, 15)
-    window_device = st.slider(t("devices_phone_window"), 1, 48, 24)
-
-    st.markdown("---")
-    seed = st.number_input(t("random_seed"), value=42, step=1)
-    if st.button(t("regenerate_data"), use_container_width=True):
-        st.cache_data.clear()
-
-    st.markdown("---")
-    st.markdown(
-        f"<div style='font-size:0.75rem;color:#555;line-height:1.6'>"
-        f"{t('footer_text')}"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
-
-
-# ──────────────────────────────────────────────
-# HEADER
-# ──────────────────────────────────────────────
-
-# Get translation function (defined once after language is set in sidebar)
+# Get translation function
 t = lambda key: get_text(key, st.session_state.language)
 
+# Header
 st.markdown(
-    f'<h1 style="margin-bottom:0.2rem">🔐 {t("page_title")}'
-    f'<span class="proto-badge">Prototype</span></h1>',
+    f'<h1>🔐 {t("page_title")}<span class="proto-badge">Prototype</span></h1>',
     unsafe_allow_html=True,
 )
 st.markdown(
-    f'<p style="color:#888;margin-top:0;font-size:0.95rem">'
+    f'<p style="color:#a0aec0;margin-top:0;font-size:1rem;margin-bottom:1.5rem">'
     f'{t("page_subtitle")}</p>',
     unsafe_allow_html=True,
 )
+
+# Control Panel
+st.markdown(f'<div class="control-panel">', unsafe_allow_html=True)
+st.markdown(f'<p style="font-size:0.8rem;text-transform:uppercase;color:#a0aec0;letter-spacing:1.5px;font-weight:600;margin-bottom:1.5rem">{t("controls")}</p>', unsafe_allow_html=True)
+
+ctrl_cols = st.columns([1, 1, 1, 1, 1, 1, 1, 1])
+
+with ctrl_cols[0]:
+    st.markdown('<span class="control-label">📊 ' + t("normal_events") + '</span>', unsafe_allow_html=True)
+    n_normal = st.slider("", min_value=10, max_value=300, value=120, step=10, key="n_normal", label_visibility="collapsed")
+
+with ctrl_cols[1]:
+    st.markdown('<span class="control-label">⚠️ ' + t("suspicious_events") + '</span>', unsafe_allow_html=True)
+    n_suspicious = st.slider("", min_value=5, max_value=100, value=30, step=5, key="n_suspicious", label_visibility="collapsed")
+
+with ctrl_cols[2]:
+    st.markdown('<span class="control-label">🔴 ' + t("abuse_events") + '</span>', unsafe_allow_html=True)
+    n_abuse = st.slider("", min_value=5, max_value=100, value=20, step=5, key="n_abuse", label_visibility="collapsed")
+
+with ctrl_cols[3]:
+    st.markdown('<span class="control-label">📱 OTP Window</span>', unsafe_allow_html=True)
+    window_phone = st.slider("", 5, 30, 10, key="window_phone", label_visibility="collapsed")
+
+with ctrl_cols[4]:
+    st.markdown('<span class="control-label">🌐 IP Window</span>', unsafe_allow_html=True)
+    window_ip = st.slider("", 5, 30, 15, key="window_ip", label_visibility="collapsed")
+
+with ctrl_cols[5]:
+    st.markdown('<span class="control-label">📲 Device Window</span>', unsafe_allow_html=True)
+    window_device = st.slider("", 1, 48, 24, key="window_device", label_visibility="collapsed")
+
+with ctrl_cols[6]:
+    st.markdown('<span class="control-label">🎲 Seed</span>', unsafe_allow_html=True)
+    seed = st.number_input("", value=42, step=1, key="seed", label_visibility="collapsed")
+
+with ctrl_cols[7]:
+    st.markdown('<span class="control-label">🔄 Action</span>', unsafe_allow_html=True)
+    if st.button("🔄 Regenerate", use_container_width=True):
+        st.cache_data.clear()
+
+st.markdown('</div>', unsafe_allow_html=True)
 
 
 # ──────────────────────────────────────────────
@@ -721,7 +787,7 @@ with st.expander(t("explanation"), expanded=True):
             f'<b>{t("allow")}</b> — {t("allow_desc")}<br><br>'
             f'<b>{t("throttle")}</b> — {t("throttle_desc")}<br><br>'
             f'<b>{t("block")}</b> — {t("block_desc")}<br><br>'
-            f'<hr style="border-color:#2a2d3e">'
+            f'<hr style="border-color:rgba(61, 255, 160, 0.2)">'
             f'{t("prototype_warning")}'
             f'</div>',
             unsafe_allow_html=True,
@@ -759,8 +825,8 @@ with st.expander(t("explanation"), expanded=True):
 # ──────────────────────────────────────────────
 
 st.markdown(
-    f'<hr style="border-color:#2a2d3e;margin-top:2rem">'
-    f'<p style="text-align:center;color:#444;font-size:0.78rem;font-family:\'IBM Plex Mono\',monospace">'
+    f'<hr style="border-color:rgba(61, 255, 160, 0.2);margin-top:3rem;margin-bottom:2rem">'
+    f'<p style="text-align:center;color:#a0aec0;font-size:0.8rem;font-family:\'IBM Plex Mono\',monospace;letter-spacing:0.5px">'
     f'{t("final_footer")}'
     f'</p>',
     unsafe_allow_html=True,
